@@ -3,7 +3,9 @@ import requests
 import yt_dlp
 from dotenv import load_dotenv
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.ext import (
+    ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+)
 
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -18,7 +20,7 @@ def download_audio(video_url):
     ydl_opts = {
         'format': 'bestaudio/best',
         'postprocessors': [{
-            'key': 'FFmpegAudioConvertor',
+            'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
@@ -28,16 +30,15 @@ def download_audio(video_url):
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(video_url, download=True)
-        filename = ydl.prepare_filename(info).replace(".webm", ".mp3").replace(".m4a", ".mp3")
+        filename = ydl.prepare_filename(info).rsplit(".", 1)[0] + ".mp3"
         return filename, info['title']
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🎵 Welcome! Use /search <song name> to find and download MP3.")
+    await update.message.reply_text("🎵 Welcome! Just send a song name to get the MP3.")
 
-async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = " ".join(context.args)
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.message.text.strip()
     if not query:
-        await update.message.reply_text("❗ Please provide a song name. Example: `/search Faded`", parse_mode='Markdown')
         return
 
     await update.message.reply_text("🔍 Searching YouTube...")
@@ -63,7 +64,7 @@ def main():
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("search", search))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
     app.run_polling()
 

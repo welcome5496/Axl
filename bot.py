@@ -5,18 +5,18 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
 
-# Load secrets from .env
+# Load environment variables from .env (locally) or Render config
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
-# YouTube Search Function
+# YouTube search
 def search_youtube(query):
     url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&q={query}&type=video&key={YOUTUBE_API_KEY}"
     response = requests.get(url)
     return response.json()
 
-# Audio Download Function
+# Download audio from YouTube
 def download_audio(video_url):
     ydl_opts = {
         'format': 'bestaudio/best',
@@ -34,11 +34,10 @@ def download_audio(video_url):
         filename = ydl.prepare_filename(info).replace(".webm", ".mp3").replace(".m4a", ".mp3")
         return filename, info['title']
 
-# Start Command
+# Telegram bot commands
 def start(update: Update, context: CallbackContext):
-    update.message.reply_text("🎵 Welcome to the Music Bot! Use /search <song name> to find and download music.")
+    update.message.reply_text("🎵 Welcome! Use /search <song name> to find music from YouTube.")
 
-# Search Command
 def search(update: Update, context: CallbackContext):
     query = " ".join(context.args)
     if not query:
@@ -63,14 +62,14 @@ def search(update: Update, context: CallbackContext):
     else:
         update.message.reply_text("😕 No results found.")
 
-# Error Handler
 def handle_error(update: Update, context: CallbackContext):
     print(f"Error: {context.error}")
-    update.message.reply_text("❗ An error occurred. Try again later.")
+    update.message.reply_text("❗ An unexpected error occurred.")
 
-# Main Bot Runner
+# Run the bot
 def main():
-    updater = Updater(8157582382:AAGgIhtU_jmzK24bqjCDSfOnl6Y5hPtEEdo)
+    os.makedirs("downloads", exist_ok=True)
+    updater = Updater(TELEGRAM_TOKEN)
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler("start", start))
@@ -81,6 +80,4 @@ def main():
     updater.idle()
 
 if __name__ == '__main__':
-    os.makedirs("downloads", exist_ok=True)
     main()
-  

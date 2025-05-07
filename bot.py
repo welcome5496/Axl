@@ -3,9 +3,9 @@ import requests
 import yt_dlp
 from dotenv import load_dotenv
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-# Load environment variables from .env (locally) or Render config
+# Load environment variables
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
@@ -34,50 +34,45 @@ def download_audio(video_url):
         filename = ydl.prepare_filename(info).replace(".webm", ".mp3").replace(".m4a", ".mp3")
         return filename, info['title']
 
-# Telegram bot commands
-def start(update: Update, context: CallbackContext):
-    update.message.reply_text("🎵 Welcome! Use /search <song name> to find music from YouTube.")
+# Bot commands
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🎵 Welcome! Use /search <song name> to find and download MP3.")
 
-def search(update: Update, context: CallbackContext):
+async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = " ".join(context.args)
     if not query:
-        update.message.reply_text("❗ Please provide a song name. Example: `/search Faded`", parse_mode='Markdown')
+        await update.message.reply_text("❗ Please provide a song name. Example: `/search Faded`", parse_mode='Markdown')
         return
 
-    update.message.reply_text("🔍 Searching YouTube...")
+    await update.message.reply_text("🔍 Searching YouTube...")
     results = search_youtube(query)
     if results['items']:
         video = results['items'][0]
         video_id = video['id']['videoId']
         video_url = f"https://www.youtube.com/watch?v={video_id}"
         title = video['snippet']['title']
-        update.message.reply_text(f"🎧 Found: *{title}*\n📥 Downloading MP3...", parse_mode='Markdown')
+        await update.message.reply_text(f"🎧 Found: *{title}*\n📥 Downloading MP3...", parse_mode='Markdown')
 
         try:
             file_path, title = download_audio(video_url)
             with open(file_path, 'rb') as audio_file:
-                update.message.reply_audio(audio_file, title=title)
+                await update.message.reply_audio(audio_file, title=title)
         except Exception as e:
-            update.message.reply_text(f"❌ Error: {str(e)}")
+            await update.message.reply_text(f"❌ Error: {str(e)}")
     else:
-        update.message.reply_text("😕 No results found.")
+        await update.message.reply_text("😕 No results found.")
 
-def handle_error(update: Update, context: CallbackContext):
-    print(f"Error: {context.error}")
-    update.message.reply_text("❗ An unexpected error occurred.")
-
-# Run the bot
-def main():
+# Main
+async def main():
     os.makedirs("downloads", exist_ok=True)
-    updater = Updater(TELEGRAM_TOKEN)
-    dp = updater.dispatcher
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("search", search))
-    dp.add_error_handler(handle_error)
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("search", search))
 
-    updater.start_polling()
-    updater.idle()
+    await app.run_polling()
 
 if __name__ == '__main__':
-    main()
+    import asyncio
+    asyncio.run(main())
+    

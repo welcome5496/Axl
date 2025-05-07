@@ -70,7 +70,7 @@ def handle_error(update: Update, context: CallbackContext):
 
 # Main Bot Runner
 def main():
-    updater = Updater(TELEGRAM_TOKEN)
+    updater = Updater(8157582382:AAGgIhtU_jmzK24bqjCDSfOnl6Y5hPtEEdo)
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler("start", start))
